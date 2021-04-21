@@ -23,9 +23,13 @@ def _mp_train(local_rank):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Training-Step")
     parser.add_argument("--backend", type=str, default="nccl")
+    parser.add_argument("--nproc_per_node", type=int)
     args = parser.parse_args()
 
     # idist from ignite handles multiple backend (gloo, nccl, horovod, xla)
     # and launcher (torch.distributed.launch, horovodrun, slurm)
-    with idist.Parallel(backend=args.backend) as parallel:
+    kwargs = dict()
+    if args.nproc_per_node is not None:
+        kwargs["nproc_per_node"] = args.nproc_per_node
+    with idist.Parallel(backend=args.backend, **kwargs) as parallel:
         parallel.run(_mp_train)
