@@ -11,7 +11,7 @@ def _mp_train(local_rank):
         print(
             f"Process {idist.get_rank()}/{idist.get_world_size()} : Epoch {e.state.epoch} - {e.state.iteration} : batch={batch}")
         # This is a synchronization point where we are waiting all the process to finish the previous commands
-        #idist.barrier()
+        idist.barrier()
 
     # Define dummy input data for sake of simplicity
     batch_data = [0, 1, 2]
