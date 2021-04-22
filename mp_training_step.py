@@ -1,5 +1,5 @@
 import argparse
-
+import time
 import ignite.distributed as idist
 from ignite.engine import Engine
 
@@ -12,6 +12,8 @@ def _mp_train(local_rank):
             f"Process {idist.get_rank()}/{idist.get_world_size()} : Epoch {e.state.epoch} - {e.state.iteration} : batch={batch}")
         # This is a synchronization point where we are waiting all the process to finish the previous commands
         idist.barrier()
+        if idist.get_rank() == 0:
+            time.sleep(2)
 
     # Define dummy input data for sake of simplicity
     batch_data = [0, 1, 2]
