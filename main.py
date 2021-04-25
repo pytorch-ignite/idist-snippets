@@ -4,6 +4,7 @@ import argparse
 import ignite.distributed as idist
 
 
+
 def main_fn(_):
     hostname = socket.gethostname()
 
