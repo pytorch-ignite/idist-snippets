@@ -24,7 +24,7 @@ class RndDataset(Dataset):
         return x, y
 
 
-def _mp_train(world_size, backend, config):
+def _mp_train(rank, world_size, backend, config):
     print(xm.get_ordinal(), ': run with config:', config, '- backend=', backend)
 
     device = xm.xla_device()
