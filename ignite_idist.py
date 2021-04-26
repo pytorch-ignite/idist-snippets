@@ -33,7 +33,7 @@ def _mp_train(rank, config):
     dataset = RndDataset(nb_samples=config['nb_samples'])
     # Data preparation:
     train_loader = idist.auto_dataloader(
-        dataset, batch_size=config['batch_size'], num_workers=4, shuffle=True
+        dataset, batch_size=config['batch_size'], num_workers=2, shuffle=True
     )
 
     # Model, criterion, optimizer setup
