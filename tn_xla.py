@@ -36,7 +36,7 @@ def _mp_train(rank, world_size, backend, config):
                                                                     )
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=config['batch_size']// xm.xrt_world_size(),
+        batch_size=int(config['batch_size']/xm.xrt_world_size()),
         num_workers=max(4 / xm.xrt_world_size(), 1),
         sampler=train_sampler
     )
