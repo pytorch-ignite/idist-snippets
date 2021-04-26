@@ -44,7 +44,7 @@ def _mp_train(world_size, backend, config):
         dataset, num_replicas=hvd.size(), rank=hvd.rank())
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=config['batch_size'] / hvd.size(),
+        batch_size=int(config['batch_size'] / hvd.size()),
         num_workers=max(4 / hvd.size(), 1),
         sampler=train_sampler
     )
@@ -78,6 +78,8 @@ def _mp_train(world_size, backend, config):
             print('Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}'.format(hvd.local_rank(), hvd.size(),
                                                                            epoch, batch_idx * len(data),
                                                                            len(train_sampler), loss_val.item()))
+
+        return loss_val
 
     # Running _train_step for n_epochs
     n_epochs = 1

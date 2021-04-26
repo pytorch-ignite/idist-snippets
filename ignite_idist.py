@@ -1,14 +1,15 @@
 import argparse
-import time
+
+import ignite.distributed as idist
 import torch
+from ignite.engine import Engine, Events
+from torch.nn import NLLLoss
 from torch.optim import SGD
 from torch.utils.data import Dataset
 from torchvision.models import wide_resnet50_2
-import ignite.distributed as idist
-from ignite.engine import Engine
 
 
-class MockDataset(Dataset):
+class RndDataset(Dataset):
     def __init__(self, nb_samples=128, labels=100):
         self._labels = labels
         self._nb_samples = nb_samples
@@ -21,33 +22,74 @@ class MockDataset(Dataset):
         y = torch.randint(0, 100, (1,)).item()
         return x, y
 
-def _mp_fn(local_rank):
-    # A training step printing process information and underlying data
-    def _train_step(e, batch):
-        print(
-            f"Process {idist.get_rank()}/{idist.get_world_size()} : Epoch {e.state.epoch} - {e.state.iteration} : batch={batch}")
-        # This is a synchronization point where we are waiting all the process to finish the previous commands
-        idist.barrier()
-        if idist.get_rank() == 0:
-            time.sleep(2)
 
-    # Define dummy input data for sake of simplicity
-    batch_data = [0, 1, 2]
+def _mp_train(rank, config):
+
+    print(idist.get_rank(), ': run with config:', config, '- backend=', idist.backend(), '- world size',
+          idist.get_world_size())
+
+    device = idist.device()
+
+    dataset = RndDataset(nb_samples=config['nb_samples'])
+    # Data preparation:
+    train_loader = idist.auto_dataloader(
+        dataset, batch_size=config['batch_size'], num_workers=4, shuffle=True
+    )
+
+    # Model, criterion, optimizer setup
+    model = idist.auto_model(wide_resnet50_2(num_classes=100))
+    criterion = NLLLoss()
+    optimizer = idist.auto_optim(SGD(model.parameters(), lr=0.01))
+
+    log_interval = config['log_interval']
+
+    def _train_step(engine, batch):
+
+        data = batch[0].to(device)
+        target = batch[1].to(device)
+
+        optimizer.zero_grad()
+        output = model(data)
+
+        loss_val = criterion(output, target)
+        loss_val.backward()
+        optimizer.step()
+
+        return loss_val
+
     # Running the _train_step function on whole batch_data iterable only once
     trainer = Engine(_train_step)
-    trainer.run(batch_data, max_epochs=1)
+
+    # Add a logger
+    @trainer.on(Events.ITERATION_COMPLETED(every=1))
+    def log_training():
+        print('Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}'.format(idist.get_rank(), idist.get_world_size(),
+                                                                       trainer.state.epoch,
+                                                                       trainer.state.iteration * len(
+                                                                           trainer.state.batch[0]),
+                                                                       len(dataset) / idist.get_world_size(),
+                                                                       trainer.state.output))
+
+    trainer.run(train_loader, max_epochs=1)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser("Training-Step")
+    parser = argparse.ArgumentParser("Pytorch Ignite - idist")
     parser.add_argument("--backend", type=str, default="nccl")
     parser.add_argument("--nproc_per_node", type=int)
-    args = parser.parse_args()
+    parser.add_argument("--log_interval", type=int, default=4)
+    parser.add_argument("--nb_samples", type=int, default=256)
+    parser.add_argument("--batch_size", type=int, default=16)
+    args_parsed = parser.parse_args()
 
     # idist from ignite handles multiple backend (gloo, nccl, horovod, xla)
     # and launcher (torch.distributed.launch, horovodrun, slurm)
-    kwargs = dict()
-    if args.nproc_per_node is not None:
-        kwargs["nproc_per_node"] = args.nproc_per_node
-    with idist.Parallel(backend=args.backend, **kwargs) as parallel:
-        parallel.run(_mp_fn)
+    config = {'log_interval': args_parsed.log_interval,
+              'batch_size': args_parsed.batch_size,
+              'nb_samples': args_parsed.nb_samples}
+    spawn_kwargs = dict()
+    if args_parsed.nproc_per_node is not None:
+        spawn_kwargs['nproc_per_node'] = args_parsed.nproc_per_node
+
+    with idist.Parallel(backend=args_parsed.backend, **spawn_kwargs) as parallel:
+        parallel.run(_mp_train, config)

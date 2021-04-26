@@ -65,6 +65,7 @@ def _mp_train(rank, world_size, backend, config):
             print('Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}'.format(xm.get_ordinal(), xm.xrt_world_size(),
                                                                            epoch, batch_idx * len(data),
                                                                            len(train_sampler), loss_val.item()))
+        return loss_val
 
     # Running _train_step for n_epochs
     n_epochs = 1
