@@ -41,8 +41,8 @@ def _mp_train(rank, world_size, backend, config):
         sampler=train_sampler
     )
 
-    para_loader = pl.ParallelLoader(train_loader, [device])
-
+    #para_loader = pl.ParallelLoader(train_loader, [device])
+    para_loader = pl.MpDeviceLoader(train_loader, device)
     # Model, criterion, optimizer setup
     model = wide_resnet50_2(num_classes=100).to(device)
     criterion = NLLLoss()
