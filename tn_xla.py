@@ -76,11 +76,14 @@ def _mp_train(world_size, backend, config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Torch Native - XLA")
+    parser.add_argument("--backend", type=str, default="xla-tpu")
     parser.add_argument("--nproc_per_node", type=int, default=8)
     parser.add_argument("--log_interval", type=int, default=4)
     parser.add_argument("--nb_samples", type=int, default=256)
     parser.add_argument("--batch_size", type=int, default=16)
     args_parsed = parser.parse_args()
+
+    assert args_parsed.backend == "xla-tpu"
 
     config = {'log_interval': args_parsed.log_interval,
               'batch_size': args_parsed.batch_size,
