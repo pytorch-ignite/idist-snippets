@@ -36,12 +36,11 @@ def _mp_train(rank, world_size, backend, config):
                                                                     )
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=config['batch_size'],
+        batch_size=config['batch_size']/ xm.xrt_world_size(),
         num_workers=max(4 / xm.xrt_world_size(), 1),
         sampler=train_sampler
     )
 
-    #para_loader = pl.ParallelLoader(train_loader, [device])
     para_loader = pl.MpDeviceLoader(train_loader, device)
     # Model, criterion, optimizer setup
     model = wide_resnet50_2(num_classes=100).to(device)
@@ -79,8 +78,8 @@ if __name__ == '__main__':
     parser.add_argument("--backend", type=str, default="xla-tpu")
     parser.add_argument("--nproc_per_node", type=int, default=8)
     parser.add_argument("--log_interval", type=int, default=4)
-    parser.add_argument("--nb_samples", type=int, default=256)
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--nb_samples", type=int, default=512)
+    parser.add_argument("--batch_size", type=int, default=64)
     args_parsed = parser.parse_args()
 
     assert args_parsed.backend == "xla-tpu"

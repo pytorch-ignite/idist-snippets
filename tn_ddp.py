@@ -41,13 +41,14 @@ def _mp_train(rank, world_size, backend, config):
     train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=config['batch_size'],
+        batch_size=config['batch_size']/world_size,
+        num_workers=max(4 / world_size, 1),
         sampler=train_sampler
     )
 
     # Model, criterion, optimizer setup
     model = wide_resnet50_2(num_classes=100).to(device)
-    criterion = NLLLoss().to(device)
+    criterion = NLLLoss()
     optimizer = SGD(model.parameters(), lr=0.01)
 
     if backend == 'nccl':
