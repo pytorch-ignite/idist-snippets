@@ -90,4 +90,4 @@ if __name__ == '__main__':
               'nb_samples': args_parsed.nb_samples}
 
     args = (args_parsed.nproc_per_node, args_parsed.backend, config)
-    xmp.spawn(_mp_train, args=args, nprocs=args_parsed.nproc_per_node, start_method='fork')
+    xmp.spawn(_mp_train, args=args, nprocs=args_parsed.nproc_per_node)
