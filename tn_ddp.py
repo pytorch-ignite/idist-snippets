@@ -42,7 +42,7 @@ def _mp_train(rank, world_size, backend, config):
     train_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=int(config['batch_size']/world_size),
-        num_workers=max(4 / world_size, 1),
+        num_workers=1,
         sampler=train_sampler
     )
 
