@@ -24,7 +24,7 @@ class RndDataset(Dataset):
         return x, y
 
 
-def training(rank, world_size, backend, config):
+def _mp_train(rank, world_size, backend, config):
     dist.init_process_group(backend, init_method="tcp://0.0.0.0:2233", world_size=world_size, rank=rank)
 
     device = None
@@ -108,5 +108,5 @@ if __name__ == '__main__':
     args = (args_parsed.nproc_per_node, args_parsed.backend, config)
 
     start_processes(
-        training, args=args, nprocs=args_parsed.nproc_per_node, start_method="spawn"
+        _mp_train, args=args, nprocs=args_parsed.nproc_per_node, start_method="spawn"
     )
