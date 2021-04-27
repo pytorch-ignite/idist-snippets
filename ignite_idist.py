@@ -35,9 +35,8 @@ def _mp_train(rank, config):
 
     # Data preparation:
     dataset = RndDataset(nb_samples=config['nb_samples'])
-    train_sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=xm.xrt_world_size(),
-                                                                    rank=xm.get_ordinal(),
-                                                                    )
+    train_sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=idist.get_world_size(),
+                                                                    rank=idist.get_rank())
     # Specific ignite.distributed
     train_loader = idist.auto_dataloader(
         dataset, batch_size=config['batch_size'], sampler=train_sampler
