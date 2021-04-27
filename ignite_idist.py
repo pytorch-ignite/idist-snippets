@@ -81,7 +81,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend", type=str, default="nccl")
     parser.add_argument("--nproc_per_node", type=int)
     parser.add_argument("--log_interval", type=int, default=4)
-    parser.add_argument("--nb_samples", type=int, default=128)
+    parser.add_argument("--nb_samples", type=int, default=256)
     parser.add_argument("--batch_size", type=int, default=16)
     args_parsed = parser.parse_args()
 
