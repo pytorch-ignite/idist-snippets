@@ -25,7 +25,10 @@ class RndDataset(Dataset):
 
 
 def _mp_train(rank, world_size, backend, config):
+
+    # Specific torch.distributed
     dist.init_process_group(backend, init_method="tcp://0.0.0.0:2233", world_size=world_size, rank=rank)
+    print(dist.get_rank(), ': run with config:', config, ' - backend=', backend)
 
     device = None
     if backend == 'nccl':
@@ -34,14 +37,15 @@ def _mp_train(rank, world_size, backend, config):
     else:
         device = 'cpu'
 
-    print(dist.get_rank(), ': run with config:', config, ' - backend=', backend)
-
+    # Data preparation
     dataset = RndDataset(nb_samples=config['nb_samples'])
 
+    # Specific torch.distributed
     train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
+
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=int(config['batch_size']/world_size),
+        batch_size=int(config['batch_size'] / world_size),
         num_workers=1,
         sampler=train_sampler
     )
@@ -51,11 +55,13 @@ def _mp_train(rank, world_size, backend, config):
     criterion = NLLLoss()
     optimizer = SGD(model.parameters(), lr=0.01)
 
+    # Specific torch.distributed
     if backend == 'nccl':
         model = DDP(model, device_ids=[rank])
     elif backend == 'gloo':
         model = DDP(model)
 
+    # Training loop log param
     log_interval = config['log_interval']
 
     def _train_step(batch_idx, data, target):
@@ -82,6 +88,7 @@ def _mp_train(rank, world_size, backend, config):
         for batch_idx, (data, target) in enumerate(train_loader):
             _train_step(batch_idx, data, target)
 
+    # Specific torch.distributed
     dist.destroy_process_group()
 
 
@@ -90,7 +97,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend", type=str, default="nccl")
     parser.add_argument("--nproc_per_node", type=int, default=2)
     parser.add_argument("--log_interval", type=int, default=4)
-    parser.add_argument("--nb_samples", type=int, default=256)
+    parser.add_argument("--nb_samples", type=int, default=128)
     parser.add_argument("--batch_size", type=int, default=16)
     args_parsed = parser.parse_args()
 
@@ -109,6 +116,7 @@ if __name__ == '__main__':
 
     args = (args_parsed.nproc_per_node, args_parsed.backend, config)
 
+    # Specific torch.distributed
     start_processes(
         _mp_train, args=args, nprocs=args_parsed.nproc_per_node, start_method="spawn"
     )

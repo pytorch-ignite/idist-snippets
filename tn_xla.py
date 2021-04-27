@@ -25,28 +25,33 @@ class RndDataset(Dataset):
 
 
 def _mp_train(rank, world_size, backend, config):
+    # Specific xla
     print(xm.get_ordinal(), ': run with config:', config, '- backend=', backend)
-
     device = xm.xla_device()
 
+    # Data preparation
     dataset = RndDataset(nb_samples=config['nb_samples'])
 
+    # Specific xla
     train_sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=xm.xrt_world_size(),
                                                                     rank=xm.get_ordinal(),
                                                                     )
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=int(config['batch_size']/xm.xrt_world_size()),
+        batch_size=int(config['batch_size'] / xm.xrt_world_size()),
         num_workers=1,
         sampler=train_sampler
     )
 
+    # Specific xla
     para_loader = pl.MpDeviceLoader(train_loader, device)
+
     # Model, criterion, optimizer setup
     model = wide_resnet50_2(num_classes=100).to(device)
     criterion = NLLLoss()
     optimizer = SGD(model.parameters(), lr=0.01)
 
+    # Training loop log param
     log_interval = config['log_interval']
 
     def _train_step(batch_idx, data, target):
@@ -90,4 +95,5 @@ if __name__ == '__main__':
               'nb_samples': args_parsed.nb_samples}
 
     args = (args_parsed.nproc_per_node, args_parsed.backend, config)
+    # Specific xla
     xmp.spawn(_mp_train, args=args, nprocs=args_parsed.nproc_per_node)

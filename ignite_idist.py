@@ -25,15 +25,17 @@ class RndDataset(Dataset):
 
 def _mp_train(rank, config):
 
+    # Specific ignite.distributed
     print(idist.get_rank(), ': run with config:', config, '- backend=', idist.backend(), '- world size',
           idist.get_world_size())
-
     device = idist.device()
 
-    dataset = RndDataset(nb_samples=config['nb_samples'])
     # Data preparation:
+    dataset = RndDataset(nb_samples=config['nb_samples'])
+
+    # Specific ignite.distributed
     train_loader = idist.auto_dataloader(
-        dataset, batch_size=config['batch_size'], num_workers=1, shuffle=True
+        dataset, batch_size=config['batch_size']
     )
 
     # Model, criterion, optimizer setup
@@ -41,6 +43,7 @@ def _mp_train(rank, config):
     criterion = NLLLoss()
     optimizer = idist.auto_optim(SGD(model.parameters(), lr=0.01))
 
+    # Training loop log param
     log_interval = config['log_interval']
 
     def _train_step(engine, batch):
@@ -61,7 +64,7 @@ def _mp_train(rank, config):
     trainer = Engine(_train_step)
 
     # Add a logger
-    @trainer.on(Events.ITERATION_COMPLETED(every=1))
+    @trainer.on(Events.ITERATION_COMPLETED(every=log_interval))
     def log_training():
         print('Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}'.format(idist.get_rank(), idist.get_world_size(),
                                                                        trainer.state.epoch,
@@ -78,7 +81,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend", type=str, default="nccl")
     parser.add_argument("--nproc_per_node", type=int)
     parser.add_argument("--log_interval", type=int, default=4)
-    parser.add_argument("--nb_samples", type=int, default=256)
+    parser.add_argument("--nb_samples", type=int, default=128)
     parser.add_argument("--batch_size", type=int, default=16)
     args_parsed = parser.parse_args()
 
@@ -87,9 +90,11 @@ if __name__ == '__main__':
     config = {'log_interval': args_parsed.log_interval,
               'batch_size': args_parsed.batch_size,
               'nb_samples': args_parsed.nb_samples}
+
     spawn_kwargs = dict()
     if args_parsed.nproc_per_node is not None:
         spawn_kwargs['nproc_per_node'] = args_parsed.nproc_per_node
 
+    # Specific ignite.distributed
     with idist.Parallel(backend=args_parsed.backend, **spawn_kwargs) as parallel:
         parallel.run(_mp_train, config)

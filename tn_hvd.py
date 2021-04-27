@@ -25,23 +25,26 @@ class RndDataset(Dataset):
 
 
 def _mp_train(world_size, backend, config):
-    # Initialize Horovod
+    # Specific hvd
     hvd.init()
+    print({hvd.local_rank()}, ': run with config:', config, ' - backend=', backend)
 
     device = None
     if backend == 'nccl':
         # Pin GPU to be used to process local rank (one GPU per process)
+        # Specific hvd
         torch.cuda.set_device(hvd.local_rank())
         device = 'cuda'
     else:
         device = 'cpu'
 
-    print({hvd.local_rank()}, ': run with config:', config, ' - backend=', backend)
-
+    # Data preparation
     dataset = RndDataset(nb_samples=config['nb_samples'])
 
+    # Specific hvd
     train_sampler = torch.utils.data.distributed.DistributedSampler(
         dataset, num_replicas=hvd.size(), rank=hvd.rank())
+
     train_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=int(config['batch_size'] / hvd.size()),
@@ -54,12 +57,15 @@ def _mp_train(world_size, backend, config):
     criterion = NLLLoss().to(device)
     optimizer = SGD(model.parameters(), lr=0.001)
 
+    # Specific hvd
     # Add Horovod Distributed Optimizer
     optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
 
+    # Specific hvd
     # Broadcast parameters from rank 0 to all other processes.
     hvd.broadcast_parameters(model.state_dict(), root_rank=0)
 
+    # Training loop log param
     log_interval = config['log_interval']
 
     def _train_step(batch_idx, data, target):
@@ -87,6 +93,7 @@ def _mp_train(world_size, backend, config):
         for batch_idx, (data, target) in enumerate(train_loader):
             _train_step(batch_idx, data, target)
 
+    # Specific hvd
     hvd.shutdown()
 
 
@@ -95,7 +102,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend", type=str, default="gloo")
     parser.add_argument("--nproc_per_node", type=int, default=2)
     parser.add_argument("--log_interval", type=int, default=4)
-    parser.add_argument("--nb_samples", type=int, default=256)
+    parser.add_argument("--nb_samples", type=int, default=128)
     parser.add_argument("--batch_size", type=int, default=16)
     args_parsed = parser.parse_args()
 
@@ -105,6 +112,7 @@ if __name__ == '__main__':
 
     args = (args_parsed.nproc_per_node, args_parsed.backend, config)
 
+    # Specific hvd
     run(
         _mp_train, args=args, use_gloo=True, np=args_parsed.nproc_per_node
     )
