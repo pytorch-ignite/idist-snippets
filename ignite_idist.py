@@ -7,12 +7,15 @@ from torch.nn import NLLLoss
 from torch.optim import SGD
 from torch.utils.data import Dataset
 from torchvision.models import wide_resnet50_2
-
+import torch_xla.core.xla_model as xm
+import torch_xla.distributed.parallel_loader as pl
+import torch_xla.distributed.xla_multiprocessing as xmp
 
 class RndDataset(Dataset):
     def __init__(self, nb_samples=128, labels=100):
         self._labels = labels
         self._nb_samples = nb_samples
+        torch.manual_seed(0)
 
     def __len__(self):
         return self._nb_samples
@@ -32,10 +35,12 @@ def _mp_train(rank, config):
 
     # Data preparation:
     dataset = RndDataset(nb_samples=config['nb_samples'])
-
+    train_sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=xm.xrt_world_size(),
+                                                                    rank=xm.get_ordinal(),
+                                                                    )
     # Specific ignite.distributed
     train_loader = idist.auto_dataloader(
-        dataset, batch_size=config['batch_size']
+        dataset, batch_size=config['batch_size'], sampler=train_sampler
     )
 
     # Model, criterion, optimizer setup
@@ -81,7 +86,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend", type=str, default="nccl")
     parser.add_argument("--nproc_per_node", type=int)
     parser.add_argument("--log_interval", type=int, default=4)
-    parser.add_argument("--nb_samples", type=int, default=256)
+    parser.add_argument("--nb_samples", type=int, default=128)
     parser.add_argument("--batch_size", type=int, default=16)
     args_parsed = parser.parse_args()
 
