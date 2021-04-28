@@ -12,6 +12,7 @@ class RndDataset(Dataset):
     def __init__(self, nb_samples=128, labels=100):
         self._labels = labels
         self._nb_samples = nb_samples
+        torch.randn(idist.get_rank())
 
     def __len__(self):
         return self._nb_samples
