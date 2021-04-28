@@ -7,15 +7,11 @@ from torch.nn import NLLLoss
 from torch.optim import SGD
 from torch.utils.data import Dataset
 from torchvision.models import wide_resnet50_2
-import torch_xla.core.xla_model as xm
-import torch_xla.distributed.parallel_loader as pl
-import torch_xla.distributed.xla_multiprocessing as xmp
 
 class RndDataset(Dataset):
     def __init__(self, nb_samples=128, labels=100):
         self._labels = labels
         self._nb_samples = nb_samples
-        torch.manual_seed(0)
 
     def __len__(self):
         return self._nb_samples
@@ -35,11 +31,10 @@ def _mp_train(rank, config):
 
     # Data preparation:
     dataset = RndDataset(nb_samples=config['nb_samples'])
-    train_sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=idist.get_world_size(),
-                                                                    rank=idist.get_rank())
+
     # Specific ignite.distributed
     train_loader = idist.auto_dataloader(
-        dataset, batch_size=config['batch_size'], sampler=train_sampler
+        dataset, batch_size=config['batch_size']
     )
 
     # Model, criterion, optimizer setup
@@ -57,8 +52,10 @@ def _mp_train(rank, config):
 
         optimizer.zero_grad()
         output = model(data)
+        # Add a softmax layer
+        probabilities = torch.nn.functional.softmax(output, dim=0)
 
-        loss_val = criterion(output, target)
+        loss_val = criterion(probabilities, target)
         loss_val.backward()
         optimizer.step()
 

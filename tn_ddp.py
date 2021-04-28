@@ -14,7 +14,6 @@ class RndDataset(Dataset):
     def __init__(self, nb_samples=128, labels=100):
         self._labels = labels
         self._nb_samples = nb_samples
-        torch.manual_seed(0)
 
     def __len__(self):
         return self._nb_samples
@@ -66,17 +65,18 @@ def _mp_train(rank, world_size, backend, config):
     log_interval = config['log_interval']
 
     def _train_step(batch_idx, data, target):
+
         data = data.to(device)
         target = target.to(device)
-        print(target)
+
         optimizer.zero_grad()
-        with torch.no_grad():
-            output = model(data)
-            probabilities = torch.argmax(torch.nn.functional.softmax(output, dim=0), dim=1)
-            print(probabilities)
-            loss_val = criterion(output, target)
-            # loss_val.backward()
-            # optimizer.step()
+        output = model(data)
+        # Add a softmax layer
+        probabilities = torch.nn.functional.softmax(output, dim=0)
+
+        loss_val = criterion(probabilities, target)
+        loss_val.backward()
+        optimizer.step()
 
         if (batch_idx+1) % (log_interval) == 0:
             print('Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}'.format(dist.get_rank(), dist.get_world_size(),

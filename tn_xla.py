@@ -61,8 +61,10 @@ def _mp_train(rank, world_size, backend, config):
 
         optimizer.zero_grad()
         output = model(data)
+        # Add a softmax layer
+        probabilities = torch.nn.functional.softmax(output, dim=0)
 
-        loss_val = criterion(output, target)
+        loss_val = criterion(probabilities, target)
         loss_val.backward()
         optimizer.step()
 
