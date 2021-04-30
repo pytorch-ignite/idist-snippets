@@ -11,7 +11,7 @@ def training(local_rank):
 
     @engine.on(Events.EPOCH_STARTED)
     def _(engine):
-        s1 = ''
+        s1 = ""
         if idist.get_rank() == 3:
             s1 = "Hello world"
         print({s1})

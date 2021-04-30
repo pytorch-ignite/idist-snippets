@@ -21,11 +21,13 @@ class RndDataset(Dataset):
         y = torch.randint(0, 100, (1,)).item()
         return x, y
 
+
 def _mp_train(local_rank):
     # A training step printing process information and underlying data
     def _train_step(e, batch):
         print(
-            f"Process {idist.get_rank()}/{idist.get_world_size()} : Epoch {e.state.epoch} - {e.state.iteration} : batch={batch}")
+            f"Process {idist.get_rank()}/{idist.get_world_size()} : Epoch {e.state.epoch} - {e.state.iteration} : batch={batch}"
+        )
         # This is a synchronization point where we are waiting all the process to finish the previous commands
         idist.barrier()
         if idist.get_rank() == 0:
@@ -39,7 +41,7 @@ def _mp_train(local_rank):
     trainer.run(batch_data, max_epochs=1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser("Ignite - idist")
     parser.add_argument("--backend", type=str, default="gloo")
     parser.add_argument("--nproc_per_node", type=int, default=2)

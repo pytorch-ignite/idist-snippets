@@ -11,8 +11,7 @@ from torchvision.models import wide_resnet50_2
 
 
 class RndDataset(Dataset):
-    def __init__(self, nb_samples=128, labels=100):
-        self._labels = labels
+    def __init__(self, nb_samples=128):
         self._nb_samples = nb_samples
 
     def __len__(self):
@@ -27,27 +26,29 @@ class RndDataset(Dataset):
 def _mp_train(rank, world_size, backend, config):
 
     # Specific torch.distributed
-    dist.init_process_group(backend, init_method="tcp://0.0.0.0:2233", world_size=world_size, rank=rank)
-    print(dist.get_rank(), ': run with config:', config, ' - backend=', backend)
-
+    dist.init_process_group(
+        backend, init_method="tcp://0.0.0.0:2233", world_size=world_size, rank=rank
+    )
+    print(dist.get_rank(), ": run with config:", config, " - backend=", backend)
+    print(dist.get_rank(), " with seed ", torch.initial_seed())
     device = None
-    if backend == 'nccl':
+    if backend == "nccl":
         torch.cuda.set_device(rank)
-        device = 'cuda'
+        device = "cuda"
     else:
-        device = 'cpu'
+        device = "cpu"
 
     # Data preparation
-    dataset = RndDataset(nb_samples=config['nb_samples'])
+    dataset = RndDataset(nb_samples=config["nb_samples"])
 
     # Specific torch.distributed
     train_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
 
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=int(config['batch_size'] / world_size),
+        batch_size=int(config["batch_size"] / world_size),
         num_workers=1,
-        sampler=train_sampler
+        sampler=train_sampler,
     )
 
     # Model, criterion, optimizer setup
@@ -56,13 +57,13 @@ def _mp_train(rank, world_size, backend, config):
     optimizer = SGD(model.parameters(), lr=0.01)
 
     # Specific torch.distributed
-    if backend == 'nccl':
+    if backend == "nccl":
         model = DDP(model, device_ids=[rank])
-    elif backend == 'gloo':
+    elif backend == "gloo":
         model = DDP(model)
 
     # Training loop log param
-    log_interval = config['log_interval']
+    log_interval = config["log_interval"]
 
     def _train_step(batch_idx, data, target):
 
@@ -78,10 +79,17 @@ def _mp_train(rank, world_size, backend, config):
         loss_val.backward()
         optimizer.step()
 
-        if (batch_idx+1) % (log_interval) == 0:
-            print('Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}'.format(dist.get_rank(), dist.get_world_size(),
-                                                                           epoch, (batch_idx+1) * len(data),
-                                                                           len(train_sampler), loss_val.item()))
+        if (batch_idx + 1) % (log_interval) == 0:
+            print(
+                "Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}".format(
+                    dist.get_rank(),
+                    dist.get_world_size(),
+                    epoch,
+                    (batch_idx + 1) * len(data),
+                    len(train_sampler),
+                    loss_val.item(),
+                )
+            )
         return loss_val
 
     # Running _train_step for n_epochs
@@ -94,7 +102,7 @@ def _mp_train(rank, world_size, backend, config):
     dist.destroy_process_group()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser("Torch Native - DDP")
     parser.add_argument("--backend", type=str, default="nccl")
     parser.add_argument("--nproc_per_node", type=int, default=2)
@@ -110,11 +118,15 @@ if __name__ == '__main__':
     elif args_parsed.backend == "gloo":
         assert dist.is_gloo_available()
     else:
-        raise ValueError(f"unvalid backend `{args_parsed.backend}` (valid: `gloo` or `nccl`)")
+        raise ValueError(
+            f"unvalid backend `{args_parsed.backend}` (valid: `gloo` or `nccl`)"
+        )
 
-    config = {'log_interval': args_parsed.log_interval,
-              'batch_size': args_parsed.batch_size,
-              'nb_samples': args_parsed.nb_samples}
+    config = {
+        "log_interval": args_parsed.log_interval,
+        "batch_size": args_parsed.batch_size,
+        "nb_samples": args_parsed.nb_samples,
+    }
 
     args = (args_parsed.nproc_per_node, args_parsed.backend, config)
 

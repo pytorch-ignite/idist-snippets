@@ -11,8 +11,7 @@ from torchvision.models import wide_resnet50_2
 
 
 class RndDataset(Dataset):
-    def __init__(self, nb_samples=128, labels=100):
-        self._labels = labels
+    def __init__(self, nb_samples=128):
         self._nb_samples = nb_samples
 
     def __len__(self):
@@ -26,21 +25,22 @@ class RndDataset(Dataset):
 
 def _mp_train(rank, world_size, backend, config):
     # Specific xla
-    print(xm.get_ordinal(), ': run with config:', config, '- backend=', backend)
+    print(xm.get_ordinal(), ": run with config:", config, "- backend=", backend)
     device = xm.xla_device()
+    print(xm.get_ordinal(), " with seed ", torch.initial_seed())
 
     # Data preparation
-    dataset = RndDataset(nb_samples=config['nb_samples'])
+    dataset = RndDataset(nb_samples=config["nb_samples"])
 
     # Specific xla
-    train_sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=xm.xrt_world_size(),
-                                                                    rank=xm.get_ordinal(),
-                                                                    )
+    train_sampler = torch.utils.data.distributed.DistributedSampler(
+        dataset, num_replicas=xm.xrt_world_size(), rank=xm.get_ordinal(),
+    )
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=int(config['batch_size'] / xm.xrt_world_size()),
+        batch_size=int(config["batch_size"] / xm.xrt_world_size()),
         num_workers=1,
-        sampler=train_sampler
+        sampler=train_sampler,
     )
 
     # Specific xla
@@ -52,7 +52,7 @@ def _mp_train(rank, world_size, backend, config):
     optimizer = SGD(model.parameters(), lr=0.01)
 
     # Training loop log param
-    log_interval = config['log_interval']
+    log_interval = config["log_interval"]
 
     def _train_step(batch_idx, data, target):
 
@@ -69,9 +69,16 @@ def _mp_train(rank, world_size, backend, config):
         optimizer.step()
 
         if batch_idx % log_interval == 0:
-            print('Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}'.format(xm.get_ordinal(), xm.xrt_world_size(),
-                                                                           epoch, batch_idx * len(data),
-                                                                           len(train_sampler), loss_val.item()))
+            print(
+                "Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}".format(
+                    xm.get_ordinal(),
+                    xm.xrt_world_size(),
+                    epoch,
+                    batch_idx * len(data),
+                    len(train_sampler),
+                    loss_val.item(),
+                )
+            )
         return loss_val
 
     # Running _train_step for n_epochs
@@ -81,7 +88,7 @@ def _mp_train(rank, world_size, backend, config):
             _train_step(batch_idx, data, target)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser("Torch Native - XLA")
     parser.add_argument("--backend", type=str, default="xla-tpu")
     parser.add_argument("--nproc_per_node", type=int, default=8)
@@ -92,9 +99,11 @@ if __name__ == '__main__':
 
     assert args_parsed.backend == "xla-tpu"
 
-    config = {'log_interval': args_parsed.log_interval,
-              'batch_size': args_parsed.batch_size,
-              'nb_samples': args_parsed.nb_samples}
+    config = {
+        "log_interval": args_parsed.log_interval,
+        "batch_size": args_parsed.batch_size,
+        "nb_samples": args_parsed.nb_samples,
+    }
 
     args = (args_parsed.nproc_per_node, args_parsed.backend, config)
     # Specific xla

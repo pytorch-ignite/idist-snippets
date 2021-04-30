@@ -8,11 +8,11 @@ from torch.optim import SGD
 from torch.utils.data import Dataset
 from torchvision.models import wide_resnet50_2
 
+
 class RndDataset(Dataset):
-    def __init__(self, nb_samples=128, labels=100):
-        self._labels = labels
+    def __init__(self, nb_samples=128):
         self._nb_samples = nb_samples
-        torch.randn(idist.get_rank())
+        #torch.randn(idist.get_rank())
 
     def __len__(self):
         return self._nb_samples
@@ -26,17 +26,23 @@ class RndDataset(Dataset):
 def _mp_train(rank, config):
 
     # Specific ignite.distributed
-    print(idist.get_rank(), ': run with config:', config, '- backend=', idist.backend(), '- world size',
-          idist.get_world_size())
+    print(
+        idist.get_rank(),
+        ": run with config:",
+        config,
+        "- backend=",
+        idist.backend(),
+        "- world size",
+        idist.get_world_size(),
+    )
+    print(idist.get_rank(), " with seed ", torch.initial_seed())
     device = idist.device()
 
     # Data preparation:
-    dataset = RndDataset(nb_samples=config['nb_samples'])
+    dataset = RndDataset(nb_samples=config["nb_samples"])
 
     # Specific ignite.distributed
-    train_loader = idist.auto_dataloader(
-        dataset, batch_size=config['batch_size']
-    )
+    train_loader = idist.auto_dataloader(dataset, batch_size=config["batch_size"])
 
     # Model, criterion, optimizer setup
     model = idist.auto_model(wide_resnet50_2(num_classes=100))
@@ -44,7 +50,7 @@ def _mp_train(rank, config):
     optimizer = idist.auto_optim(SGD(model.parameters(), lr=0.01))
 
     # Training loop log param
-    log_interval = config['log_interval']
+    log_interval = config["log_interval"]
 
     def _train_step(engine, batch):
 
@@ -68,17 +74,21 @@ def _mp_train(rank, config):
     # Add a logger
     @trainer.on(Events.ITERATION_COMPLETED(every=log_interval))
     def log_training():
-        print('Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}'.format(idist.get_rank(), idist.get_world_size(),
-                                                                       trainer.state.epoch,
-                                                                       trainer.state.iteration * len(
-                                                                           trainer.state.batch[0]),
-                                                                       len(dataset) / idist.get_world_size(),
-                                                                       trainer.state.output))
+        print(
+            "Process {}/{} Train Epoch: {} [{}/{}]\tLoss: {}".format(
+                idist.get_rank(),
+                idist.get_world_size(),
+                trainer.state.epoch,
+                trainer.state.iteration * len(trainer.state.batch[0]),
+                len(dataset) / idist.get_world_size(),
+                trainer.state.output,
+            )
+        )
 
     trainer.run(train_loader, max_epochs=1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser("Pytorch Ignite - idist")
     parser.add_argument("--backend", type=str, default="nccl")
     parser.add_argument("--nproc_per_node", type=int)
@@ -89,13 +99,15 @@ if __name__ == '__main__':
 
     # idist from ignite handles multiple backend (gloo, nccl, horovod, xla)
     # and launcher (torch.distributed.launch, horovodrun, slurm)
-    config = {'log_interval': args_parsed.log_interval,
-              'batch_size': args_parsed.batch_size,
-              'nb_samples': args_parsed.nb_samples}
+    config = {
+        "log_interval": args_parsed.log_interval,
+        "batch_size": args_parsed.batch_size,
+        "nb_samples": args_parsed.nb_samples,
+    }
 
     spawn_kwargs = dict()
     if args_parsed.nproc_per_node is not None:
-        spawn_kwargs['nproc_per_node'] = args_parsed.nproc_per_node
+        spawn_kwargs["nproc_per_node"] = args_parsed.nproc_per_node
 
     # Specific ignite.distributed
     with idist.Parallel(backend=args_parsed.backend, **spawn_kwargs) as parallel:
