@@ -110,5 +110,5 @@ if __name__ == "__main__":
         spawn_kwargs["nproc_per_node"] = args_parsed.nproc_per_node
     spawn_kwargs["start_method"] = "spawn"
     # Specific ignite.distributed
-    with idist.Parallel(backend=args_parsed.backend, start_method="spawn", **spawn_kwargs) as parallel:
+    with idist.Parallel(backend=args_parsed.backend, **spawn_kwargs) as parallel:
         parallel.run(_mp_train, config)
