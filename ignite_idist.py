@@ -12,7 +12,7 @@ from torchvision.models import wide_resnet50_2
 class RndDataset(Dataset):
     def __init__(self, nb_samples=128):
         self._nb_samples = nb_samples
-        #torch.randn(idist.get_rank())
+        # torch.randn(idist.get_rank())
 
     def __len__(self):
         return self._nb_samples
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     spawn_kwargs = dict()
     if args_parsed.nproc_per_node is not None:
         spawn_kwargs["nproc_per_node"] = args_parsed.nproc_per_node
-
+    spawn_kwargs["start_method"] = "spawn"
     # Specific ignite.distributed
     with idist.Parallel(backend=args_parsed.backend, **spawn_kwargs) as parallel:
         parallel.run(_mp_train, config)
