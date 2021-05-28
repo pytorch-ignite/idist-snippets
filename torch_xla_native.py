@@ -66,7 +66,7 @@ def _mp_train(rank, world_size, backend, config):
 
         loss_val = criterion(probabilities, target)
         loss_val.backward()
-        optimizer.step()
+        xm.optimizer_step(optimizer)
 
         if batch_idx % log_interval == 0:
             print(
