@@ -35,7 +35,7 @@ def _mp_train(rank, config):
         "- world size",
         idist.get_world_size(),
     )
-    print(idist.get_rank(), " with seed ", torch.initial_seed())
+
     device = idist.device()
 
     # Data preparation:
