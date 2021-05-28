@@ -27,7 +27,6 @@ def _mp_train(rank, world_size, backend, config):
     # Specific xla
     print(xm.get_ordinal(), ": run with config:", config, "- backend=", backend)
     device = xm.xla_device()
-    print(xm.get_ordinal(), " with seed ", torch.initial_seed())
 
     # Data preparation
     dataset = RndDataset(nb_samples=config["nb_samples"])
