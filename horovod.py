@@ -23,19 +23,15 @@ class RndDataset(Dataset):
         return x, y
 
 
-def _mp_train(world_size, backend, config):
+def _mp_train(world_size, cuda, config):
     # Specific hvd
     hvd.init()
-    print({hvd.local_rank()}, ": run with config:", config, " - backend=", backend)
+    print({hvd.local_rank()}, ": run with config:", config, " - cuda:", cuda)
 
-    device = None
-    if backend == "nccl":
+    if cuda:
         # Pin GPU to be used to process local rank (one GPU per process)
         # Specific hvd
         torch.cuda.set_device(hvd.local_rank())
-        device = "cuda"
-    else:
-        device = "cpu"
 
     # Data preparation
     dataset = RndDataset(nb_samples=config["nb_samples"])
@@ -53,8 +49,10 @@ def _mp_train(world_size, backend, config):
     )
 
     # Model, criterion, optimizer setup
-    model = wide_resnet50_2(num_classes=100).to(device)
-    criterion = NLLLoss().to(device)
+    model = wide_resnet50_2(num_classes=100)\
+    if cuda:
+        model.cuda()
+    criterion = NLLLoss()
     optimizer = SGD(model.parameters(), lr=0.001)
 
     # Specific hvd
@@ -72,8 +70,8 @@ def _mp_train(world_size, backend, config):
 
     def _train_step(batch_idx, data, target):
 
-        data = data.to(device)
-        target = target.to(device)
+        if cuda:
+            data, target = data.cuda(), target.cuda()
 
         optimizer.zero_grad()
         output = model(data)
@@ -110,12 +108,15 @@ def _mp_train(world_size, backend, config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Torch Native - Horovod")
-    parser.add_argument("--backend", type=str, default="gloo")
+    parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='disables CUDA training')
     parser.add_argument("--nproc_per_node", type=int, default=2)
     parser.add_argument("--log_interval", type=int, default=4)
     parser.add_argument("--nb_samples", type=int, default=128)
     parser.add_argument("--batch_size", type=int, default=16)
     args_parsed = parser.parse_args()
+
+    args_parsed.cuda = not args_parsed.no_cuda and torch.cuda.is_available()
 
     config = {
         "log_interval": args_parsed.log_interval,
@@ -123,7 +124,7 @@ if __name__ == "__main__":
         "nb_samples": args_parsed.nb_samples,
     }
 
-    args = (args_parsed.nproc_per_node, args_parsed.backend, config)
+    args = (args_parsed.nproc_per_node, args_parsed.cuda, config)
 
     # Specific hvd
     run(_mp_train, args=args, use_gloo=True, np=args_parsed.nproc_per_node)
