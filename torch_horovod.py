@@ -1,8 +1,8 @@
 import argparse
 
-import horovod_.torch as hvd
+import torch_horovod.torch as hvd
 import torch
-from horovod_ import run
+from torch_horovod import run
 from torch.nn import NLLLoss
 from torch.optim import SGD
 from torch.utils.data import DataLoader
