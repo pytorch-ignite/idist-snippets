@@ -23,7 +23,7 @@ class RndDataset(Dataset):
         return x, y
 
 
-def _mp_train(rank, world_size, backend, config):
+def training(rank, world_size, backend, config):
 
     # Specific torch.distributed
     dist.init_process_group(
@@ -31,12 +31,8 @@ def _mp_train(rank, world_size, backend, config):
     )
     print(dist.get_rank(), ": run with config:", config, " - backend=", backend)
     print(dist.get_rank(), " with seed ", torch.initial_seed())
-    device = None
-    if backend == "nccl":
-        torch.cuda.set_device(rank)
-        device = "cuda"
-    else:
-        device = "cpu"
+
+    torch.cuda.set_device(rank)
 
     # Data preparation
     dataset = RndDataset(nb_samples=config["nb_samples"])
@@ -52,23 +48,20 @@ def _mp_train(rank, world_size, backend, config):
     )
 
     # Model, criterion, optimizer setup
-    model = wide_resnet50_2(num_classes=100).to(device)
+    model = wide_resnet50_2(num_classes=100).cuda()
     criterion = NLLLoss()
     optimizer = SGD(model.parameters(), lr=0.01)
 
     # Specific torch.distributed
-    if backend == "nccl":
-        model = DDP(model, device_ids=[rank])
-    elif backend == "gloo":
-        model = DDP(model)
+    model = DDP(model, device_ids=[rank])
 
     # Training loop log param
     log_interval = config["log_interval"]
 
     def _train_step(batch_idx, data, target):
 
-        data = data.to(device)
-        target = target.to(device)
+        data = data.cuda()
+        target = target.cuda()
 
         optimizer.zero_grad()
         output = model(data)
@@ -132,5 +125,5 @@ if __name__ == "__main__":
 
     # Specific torch.distributed
     start_processes(
-        _mp_train, args=args, nprocs=args_parsed.nproc_per_node, start_method="spawn"
+        training, args=args, nprocs=args_parsed.nproc_per_node, start_method="spawn"
     )
