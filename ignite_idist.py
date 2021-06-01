@@ -23,7 +23,7 @@ class RndDataset(Dataset):
         return x, y
 
 
-def _mp_train(rank, config):
+def training(rank, config):
 
     # Specific ignite.distributed
     print(
@@ -111,4 +111,4 @@ if __name__ == "__main__":
     spawn_kwargs["start_method"] = "spawn"
     # Specific ignite.distributed
     with idist.Parallel(backend=args_parsed.backend, **spawn_kwargs) as parallel:
-        parallel.run(_mp_train, config)
+        parallel.run(training, config)

@@ -1,8 +1,8 @@
 import argparse
 
-import horovod.torch as hvd
+import horovod_.torch as hvd
 import torch
-from horovod import run
+from horovod_ import run
 from torch.nn import NLLLoss
 from torch.optim import SGD
 from torch.utils.data import DataLoader
@@ -23,7 +23,7 @@ class RndDataset(Dataset):
         return x, y
 
 
-def _mp_train(world_size, cuda, config):
+def training(world_size, cuda, config):
     # Specific hvd
     hvd.init()
     print({hvd.local_rank()}, ": run with config:", config, " - cuda:", cuda)
@@ -127,4 +127,4 @@ if __name__ == "__main__":
     args = (args_parsed.nproc_per_node, args_parsed.cuda, config)
 
     # Specific hvd
-    run(_mp_train, args=args, use_gloo=True, np=args_parsed.nproc_per_node)
+    run(training, args=args, use_gloo=True, np=args_parsed.nproc_per_node)

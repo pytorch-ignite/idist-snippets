@@ -23,7 +23,7 @@ class RndDataset(Dataset):
         return x, y
 
 
-def _mp_train(rank, world_size, backend, config):
+def training(rank, world_size, backend, config):
     # Specific xla
     print(xm.get_ordinal(), ": run with config:", config, "- backend=", backend)
     device = xm.xla_device()
@@ -106,4 +106,4 @@ if __name__ == "__main__":
 
     args = (args_parsed.nproc_per_node, args_parsed.backend, config)
     # Specific xla
-    xmp.spawn(_mp_train, args=args, nprocs=args_parsed.nproc_per_node)
+    xmp.spawn(training, args=args, nprocs=args_parsed.nproc_per_node)
