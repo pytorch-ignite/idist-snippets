@@ -30,7 +30,6 @@ def training(rank, world_size, backend, config):
         backend, init_method="tcp://0.0.0.0:2233", world_size=world_size, rank=rank
     )
     print(dist.get_rank(), ": run with config:", config, " - backend=", backend)
-    print(dist.get_rank(), " with seed ", torch.initial_seed())
 
     torch.cuda.set_device(rank)
 
