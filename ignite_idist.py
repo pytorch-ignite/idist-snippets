@@ -106,9 +106,8 @@ if __name__ == "__main__":
     }
 
     spawn_kwargs = dict()
-    if args_parsed.nproc_per_node is not None:
-        spawn_kwargs["nproc_per_node"] = args_parsed.nproc_per_node
-    spawn_kwargs["start_method"] = "spawn"
+    spawn_kwargs["nproc_per_node"] = args_parsed.nproc_per_node
+
     # Specific ignite.distributed
     with idist.Parallel(backend=args_parsed.backend, **spawn_kwargs) as parallel:
         parallel.run(training, config)
