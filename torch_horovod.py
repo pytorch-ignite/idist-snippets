@@ -49,7 +49,7 @@ def training(world_size, cuda, config):
     )
 
     # Model, criterion, optimizer setup
-    model = wide_resnet50_2(num_classes=100)\
+    model = wide_resnet50_2(num_classes=100)
     if cuda:
         model.cuda()
     criterion = NLLLoss()
