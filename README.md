@@ -134,7 +134,6 @@ python -u torch_native.py --nproc_per_node 2 --backend nccl
 ```commandline
 # Running with horovod with gloo controller ( gloo or nccl support )
 python -u torch_horovod.py --nproc_per_node 2
-
 ```
 
 #### XLA/TPU devices
