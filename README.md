@@ -6,6 +6,7 @@ Distributed Training Made Easy with PyTorch-Ignite: How to install and run
 ```commandline
 pip install -r requirements.txt
 ```
+
 For [horovod](https://github.com/horovod/horovod) backend, in order to avoid the installation procedure, it is recommended to pull one of PyTorch-Ignite's [docker image with pre-installed Horovod](https://github.com/pytorch/ignite/blob/master/docker/hvd/Dockerfile.hvd-base). It will include Horovod with `gloo` controller and `nccl` support.
 
 ```commandline
@@ -14,7 +15,7 @@ cd project
 # run horovod code snippets ...
 ```
 
-For XLA/TPUs, one can run the scripts inside a [Colab notebook](https://colab.research.google.com/). 
+For [XLA/TPUs](https://github.com/pytorch/xla), one can run the scripts inside a [Colab notebook](https://colab.research.google.com/). 
 
 Firstly, install the dependencies: 
 ```commandline
