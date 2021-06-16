@@ -1,5 +1,36 @@
-How to run these code snippets:
+Distributed Training Made Easy with PyTorch-Ignite: How to install and run
 ===
+
+## Installation
+
+```commandline
+pip install -r requirements.txt
+```
+For [horovod](https://github.com/horovod/horovod) backend, in order to avoid the installation procedure, it is recommended to pull one of PyTorch-Ignite's [docker image with pre-installed Horovod](https://github.com/pytorch/ignite/blob/master/docker/hvd/Dockerfile.hvd-base). It will include Horovod with `gloo` controller and `nccl` support.
+
+```commandline
+docker run --gpus all -it -v $PWD:/workspace/project --network=host --shm-size 16G pytorchignite/hvd-vision:latest /bin/bash
+cd project
+# run horovod code snippets ...
+```
+
+For XLA/TPUs, one can run the scripts inside a [Colab notebook](https://colab.research.google.com/). 
+
+Firstly, install the dependencies: 
+```commandline
+import os
+assert os.environ['COLAB_TPU_ADDR'], 'Make sure to select TPU from Edit > Notebook settings > Hardware accelerator'
+!pip install cloud-tpu-client==0.10 https://storage.googleapis.com/tpu-pytorch/wheels/torch_xla-1.8.1-cp37-cp37m-linux_x86_64.whl
+!pip install -q --upgrade pytorch-ignite
+```
+
+Secondly download the scripts:
+```commandline
+!rm -rf torch_native_xla.py && wget https://raw.githubusercontent.com/pytorch-ignite/idist-snippets/master/torch_xla_native.py
+!rm -rf ignite_idist.py && wget https://raw.githubusercontent.com/pytorch-ignite/idist-snippets/master/ignite_idist.py
+```
+
+## Running the code snippets:
 
 The code snippets highlight the API's specificities of each of the distributed backends on the same use case as compared to the `idist` API. Torch native code is available for DDP, Horovod, and for XLA/TPU devices. 
 
@@ -82,7 +113,7 @@ or using `sbatch script.bash` with the script file `script.bash`:
 srun python ignite_idist.py --backend nccl
 ```
 
-### Running Torch native run methods
+### Running Torch native methods
 In order to run the same training loop on different backends without `idist` you would have to use the different native torch snippets and associate a specific launch method for each of them. 
 
 #### Torch native DDP
@@ -101,7 +132,7 @@ python -u torch_native.py --nproc_per_node 2 --backend nccl
 
 ```commandline
 # Running with horovod with gloo controller ( gloo or nccl support )
-python -u torch_horovod.py --nproc_per_node 2t
+python -u torch_horovod.py --nproc_per_node 2
 
 ```
 
