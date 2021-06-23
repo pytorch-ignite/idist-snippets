@@ -2,7 +2,7 @@ Here are all the individual code snippets used in the Distributed Training Made 
 
 ### Steps to reproduce all the code images in the blog
 
-1. Format code according to [Black] with a limit of 80 characters per line
+1. Format code with [Black](https://black.readthedocs.io/en/stable/) and a limit of 80 characters per line
     1. Visit [Black Playground](https://black.vercel.app/)
     2. Click on the Settings icon located on the bottom left of the page
     3. Set the **Line Length** to 80
